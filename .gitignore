@@ -1,2 +1,8 @@
 build/
 **/*.user
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+iex_websocket_api
+libsioclient_tls.a
