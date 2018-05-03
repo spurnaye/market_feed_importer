@@ -12,11 +12,7 @@
 #include <mutex>
 #include <cmath>
 // Comment this out to disable handshake logging to stdout
-#if DEBUG || _DEBUG
 #define LOG(x) std::cout << x
-#else
-#define LOG(x)
-#endif
 
 using boost::posix_time::milliseconds;
 using namespace std;
@@ -35,17 +31,14 @@ namespace sio
         m_reconn_made(0)
     {
         using websocketpp::log::alevel;
-#ifndef DEBUG
         m_client.clear_access_channels(alevel::all);
         m_client.set_access_channels(alevel::connect|alevel::disconnect|alevel::app);
-#endif
         // Initialize the Asio transport policy
         m_client.init_asio();
 
         // Bind the clients we are using
         using websocketpp::lib::placeholders::_1;
         using websocketpp::lib::placeholders::_2;
-        m_client.set_open_handler(lib::bind(&client_impl::on_open,this,_1));
         m_client.set_close_handler(lib::bind(&client_impl::on_close,this,_1));
         m_client.set_fail_handler(lib::bind(&client_impl::on_fail,this,_1));
         m_client.set_message_handler(lib::bind(&client_impl::on_message,this,_1,_2));
@@ -279,7 +272,7 @@ namespace sio
         if(ec || m_con.expired())
         {
             if (ec != boost::asio::error::operation_aborted)
-                LOG("ping exit,con is expired?"<<m_con.expired()<<",ec:"<<ec.message()<<endl){};
+                LOG("ping exit,con is expired?"<<m_con.expired()<<",ec:"<<ec.message()<<endl);{};
             return;
         }
         packet p(packet::frame_ping);
@@ -493,7 +486,7 @@ namespace sio
             m_ping_timer.reset(new boost::asio::deadline_timer(m_client.get_io_service()));
             boost::system::error_code ec;
             m_ping_timer->expires_from_now(milliseconds(m_ping_interval), ec);
-            if(ec)LOG("ec:"<<ec.message()<<endl){};
+            if(ec)LOG("ec:"<<ec.message()<<endl);{};
             m_ping_timer->async_wait(lib::bind(&client_impl::ping,this,lib::placeholders::_1));
             LOG("On handshake,sid:"<<m_sid<<",ping interval:"<<m_ping_interval<<",ping timeout"<<m_ping_timeout<<endl);
             return;

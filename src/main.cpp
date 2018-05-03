@@ -44,6 +44,7 @@ public:
     void on_close(client::close_reason const& reason)
     {
         std::cout<<"sio closed "<<std::endl;
+        std::cout<<reason<<std::endl;
         exit(0);
     }
     
@@ -51,6 +52,10 @@ public:
     {
         std::cout<<"sio failed "<<std::endl;
         exit(0);
+    }
+
+    void on_message(){
+		std::cout << "on message \n";
     }
 };
 
@@ -60,7 +65,7 @@ socket::ptr current_socket;
 
 void bind_events()
 {
-	current_socket->on("new message", sio::socket::event_listener_aux([&](string const& name, message::ptr const& data, bool isAck,message::list &ack_resp)
+	current_socket->on("message", sio::socket::event_listener_aux([&](string const& name, message::ptr const& data, bool isAck,message::list &ack_resp)
                        {
                            _lock.lock();
                            string user = data->get_map()["username"]->get_string();
@@ -69,43 +74,18 @@ void bind_events()
                            _lock.unlock();
                        }));
     
-    current_socket->on("user joined",sio::socket::event_listener_aux([&](string const& name, message::ptr const& data, bool isAck,message::list &ack_resp)
-                       {
-                           _lock.lock();
-                           string user = data->get_map()["username"]->get_string();
-                           participants  = data->get_map()["numUsers"]->get_int();
-                           bool plural = participants !=1;
-                           
-                           //     abc "
-                           HIGHLIGHT(user<<" joined"<<"\nthere"<<(plural?" are ":"'s ")<< participants<<(plural?" participants":" participant"));
-                           _lock.unlock();
-                       }));
-    current_socket->on("user left", sio::socket::event_listener_aux([&](string const& name, message::ptr const& data, bool isAck,message::list &ack_resp)
-                       {
-                           _lock.lock();
-                           string user = data->get_map()["username"]->get_string();
-                           participants  = data->get_map()["numUsers"]->get_int();
-                           bool plural = participants !=1;
-                           HIGHLIGHT(user<<" left"<<"\nthere"<<(plural?" are ":"'s ")<< participants<<(plural?" participants":" participant"));
-                           _lock.unlock();
-                       }));
 }
 
 MAIN_FUNC
 {
 
-#if SIO_TLS
-	std::cout << "SIO_TLS is defiend" << '\n'; 
-#endif
     sio::client h;
     connection_listener l(h);
-    
     h.set_open_listener(std::bind(&connection_listener::on_connected, &l));
     h.set_close_listener(std::bind(&connection_listener::on_close, &l,std::placeholders::_1));
     h.set_fail_listener(std::bind(&connection_listener::on_fail, &l));
-    //h.connect("wss://ws-api.iextrading.com/1.0/tops");
     h.connect("https://ws-api.iextrading.com/1.0/tops");
-    //h.connect("wss://echo.websocket.org");
+
     _lock.lock();
     if(!connect_finish)
     {
@@ -113,68 +93,10 @@ MAIN_FUNC
     }
     _lock.unlock();
 	current_socket = h.socket();
-Login:
-    string nickname;
-    while (nickname.length() == 0) {
-        HIGHLIGHT("Type your nickname:");
-        
-        getline(cin, nickname);
-    }
-	current_socket->on("login", sio::socket::event_listener_aux([&](string const& name, message::ptr const& data, bool isAck,message::list &ack_resp){
-        _lock.lock();
-        participants = data->get_map()["numUsers"]->get_int();
-        bool plural = participants !=1;
-        HIGHLIGHT("Welcome to Socket.IO Chat-\nthere"<<(plural?" are ":"'s ")<< participants<<(plural?" participants":" participant"));
-        _cond.notify_all();
-        _lock.unlock();
-        current_socket->off("login");
-    }));
-    current_socket->emit("add user", nickname);
-    _lock.lock();
-    if (participants<0) {
-        _cond.wait(_lock);
-    }
-    _lock.unlock();
-    bind_events();
-    
-    HIGHLIGHT("Start to chat,commands:\n'$exit' : exit chat\n'$nsp <namespace>' : change namespace");
-    for (std::string line; std::getline(std::cin, line);) {
-        if(line.length()>0)
-        {
-            if(line == "$exit")
-            {
-                break;
-            }
-            else if(line.length() > 5&&line.substr(0,5) == "$nsp ")
-            {
-                string new_nsp = line.substr(5);
-                if(new_nsp == current_socket->get_namespace())
-                {
-                    continue;
-                }
-                current_socket->off_all();
-                current_socket->off_error();
-                //per socket.io, default nsp should never been closed.
-                if(current_socket->get_namespace() != "/")
-                {
-                    current_socket->close();
-                }
-                current_socket = h.socket(new_nsp);
-                bind_events();
-                //if change to default nsp, we do not need to login again (since it is not closed).
-                if(current_socket->get_namespace() == "/")
-                {
-                    continue;
-                }
-                goto Login;
-            }
-            current_socket->emit("new message", line);
-            _lock.lock();
-            EM("\t\t\t"<<line<<":"<<"You");
-            _lock.unlock();
-        }
-    }
-    HIGHLIGHT("Closing...");
+	sio::message::list symbol_list;
+	bind_events();
+    symbol_list.push("aapl,amzn");
+    current_socket->emit("subscribe", symbol_list);
     h.sync_close();
     h.clear_con_listeners();
 	return 0;

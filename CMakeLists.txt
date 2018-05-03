@@ -4,8 +4,6 @@ PROJECT(market_data_importer)
 option(BUILD_SHARED_LIBS "Build the shared library" OFF)
 option(Boost_USE_STATIC_LIBS "Use Boost static version" OFF)
 
-#set(CMAKE_C_COMPILER "/usr/bin/gcc")
-#set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -std=c++11")
 set(MAJOR 0)
 set(MINOR 0)

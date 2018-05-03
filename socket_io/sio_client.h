@@ -35,6 +35,8 @@ namespace sio
         ~client();
         
         //set listeners and event bindings.
+        void set_message_handler(con_listener const& l);
+
         void set_open_listener(con_listener const& l);
         
         void set_fail_listener(con_listener const& l);
